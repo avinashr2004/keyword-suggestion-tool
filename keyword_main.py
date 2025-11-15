@@ -4,11 +4,14 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import nltk
 from nltk.corpus import stopwords
 import re
+import os # <-- IMPORT OS
+from dotenv import load_dotenv # <-- IMPORT DOTENV
 
-# --- PASTE YOUR KEYS HERE ---
-API_KEY = "AIzaSyCGQXQrXwje5yGqgMwh5jkKbSFqXgc2C4s"
-SEARCH_ENGINE_ID = "80a2ac299ca2d4569"
-# ----------------------------
+# --- LOAD KEYS FROM .env FILE ---
+load_dotenv() # This loads the .env file
+API_KEY = os.getenv("API_KEY")
+SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
+# ---------------------------------
 
 # This line downloads the stopwords list
 nltk.download('stopwords')
@@ -58,15 +61,12 @@ def fetch_blog_title(url):
         print(f"Error fetching title from {url}: {e}")
         return "" 
 
-# --- THIS IS THE NEW, REPLACED FUNCTION ---
 def get_top_google_results(query, num_results=10):
     """Gets top N Google search results using the official API."""
     print(f"Searching Google for: {query}")
     
-    # The URL for the Google Search API
     url = "https://www.googleapis.com/customsearch/v1"
     
-    # The parameters for the search query
     params = {
         'key': API_KEY,
         'cx': SEARCH_ENGINE_ID,
@@ -77,11 +77,8 @@ def get_top_google_results(query, num_results=10):
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
-        
-        # Parse the JSON response
         data = response.json()
         
-        # Extract the 'link' from each 'item' in the results
         if 'items' in data:
             return [item['link'] for item in data['items']]
         else:
@@ -90,9 +87,9 @@ def get_top_google_results(query, num_results=10):
             
     except requests.RequestException as e:
         print(f"Error during Google API search: {e}")
-        print("Response text:", response.text)
+        if response:
+            print("Response text:", response.text)
         return []
-# --- END OF NEW FUNCTION ---
 
 def suggest_new_keywords(existing_keywords, related_blogs_keywords):
     """Compares keyword lists and suggests new ones."""
@@ -108,13 +105,13 @@ def suggest_new_keywords(existing_keywords, related_blogs_keywords):
 def main():
     """Main function to run the keyword suggestion process."""
     
-    if API_KEY == "PASTE_YOUR_API_KEY_HERE" or SEARCH_ENGINE_ID == "PASTE_YOUR_CX_ID_HERE":
-        print("!!! ERROR: Please paste your API_KEY and SEARCH_ENGINE_ID at the top of the script.")
+    if not API_KEY or not SEARCH_ENGINE_ID:
+        print("!!! ERROR: API_KEY or SEARCH_ENGINE_ID not found.")
+        print("Please make sure you have a .env file with your keys.")
         return
         
     blog_url = input("Enter the blog URL: ")
     
-    # 1. Analyze your blog
     blog_text = fetch_blog_text(blog_url)
     if not blog_text:
         print("Could not fetch content from the URL. Exiting.")
@@ -124,7 +121,6 @@ def main():
     print("\n--- Existing Keywords in your blog ---")
     print(existing_keywords)
     
-    # 2. Get blog topic for searching
     blog_topic = fetch_blog_title(blog_url)
     if not blog_topic:
         print("Could not fetch blog title. Using a fallback query.")
@@ -133,13 +129,11 @@ def main():
     print("\n--- Detected blog topic/title ---")
     print(blog_topic)
     
-    # 3. Retrieve competitor URLs (using the new function)
     related_blog_urls = get_top_google_results(blog_topic)
     print("\n--- Top related blog URLs from Google ---")
     for url in related_blog_urls:
         print(url)
         
-    # 4. Analyze competitors
     related_keywords_all = []
     print("\n--- Analyzing competitor blogs... ---")
     for url in related_blog_urls:
@@ -157,7 +151,6 @@ def main():
         except Exception as e:
             print(f"Skipping {url} due to error: {e}")
             
-    # 5. Suggest new keywords
     new_suggestions = suggest_new_keywords(existing_keywords, related_keywords_all)
     print("\n==========================================")
     print("--- 💡 Suggested New Keywords for your blog ---")
